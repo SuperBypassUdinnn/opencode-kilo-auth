@@ -19,6 +19,7 @@ import { appendFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createRuntimes, type AccountEntry, type AccountRuntime } from "./pool"
+import { ENV_KILO_API_KEY } from "./constants"
 import type { AccountFile, StoredAccount } from "./types"
 
 const PLUGIN_DIR = dirname(fileURLToPath(import.meta.url))
@@ -105,8 +106,23 @@ function parseAccounts(raw: unknown): AccountEntry[] {
 /**
  * Read accounts.json, reloading only when the file changes.
  * A reload resets runtime state so a rotated account set starts clean.
+ *
+ * Priority order:
+ *   1. KILO_API_KEY env var (single account, bypasses file)
+ *   2. accounts.json file (multi-account rotation)
+ *   3. Anonymous free-tier (when neither is configured)
  */
 export function accounts(): AccountRuntime[] {
+  // Env var shortcut: a single injected account, no file needed
+  const envKey = process.env[ENV_KILO_API_KEY]
+  if (envKey && envKey.trim() !== "") {
+    if (pool.length === 1 && pool[0]?.id === "env") return pool
+    const entry: AccountEntry = { id: "env", token: envKey.trim() }
+    pool = createRuntimes([entry])
+    poolSource = undefined
+    log("loaded source=env id=env")
+    return pool
+  }
   const path = accountsPath()
 
   let stamp: number

@@ -32,3 +32,6 @@ export const MODELS_FETCH_TIMEOUT_MS = 10_000
 export const HEADER_EDITORNAME = "X-KILO-EDITORNAME"
 export const DEFAULT_EDITOR_NAME = "OpenCode"
 export const ENV_EDITOR_NAME = "KILO_EDITOR_NAME"
+
+/** When KILO_API_KEY is set, it acts as a single injected account. */
+export const ENV_KILO_API_KEY = "KILO_API_KEY"

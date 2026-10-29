@@ -1,71 +1,107 @@
-# Kilo Auth Plugin for OpenCode
+# Kilo Auth Plugin for OpenCode (V2)
 
-[![skills.sh](https://skills-badge.vercel.app/badge/JungHoonGhae/opencode-kilo-auth?style=flat-square&label=installs)](https://skills.sh/JungHoonGhae/opencode-kilo-auth)
-[![npm version](https://img.shields.io/npm/v/opencode-kilo-auth.svg)](https://www.npmjs.com/package/opencode-kilo-auth)
-[![npm downloads](https://img.shields.io/npm/dw/opencode-kilo-auth.svg)](https://www.npmjs.com/package/opencode-kilo-auth)
-[![GitHub stars](https://img.shields.io/github/stars/JungHoonGhae/opencode-kilo-auth)](https://github.com/JungHoonGhae/opencode-kilo-auth/stargazers)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/JungHoonGhae/opencode-kilo-auth/blob/main/LICENSE)
+OpenCode plugin for Kilo Gateway authentication — ported to the OpenCode V2 plugin API with automatic model discovery and multi-account rotation.
 
-| [<img alt="GitHub Follow" src="https://img.shields.io/github/followers/JungHoonGhae?style=flat-square&logo=github&labelColor=black&color=24292f" width="156px" />](https://github.com/JungHoonGhae) | Follow [@JungHoonGhae](https://github.com/JungHoonGhae) on GitHub for more projects. |
-| :-----| :----- |
-| [<img alt="X link" src="https://img.shields.io/badge/Follow-%40lucas_ghae-000000?style=flat-square&logo=x&labelColor=black" width="156px" />](https://x.com/lucas_ghae) | Follow [@lucas_ghae](https://x.com/lucas_ghae) on X for updates. |
-
-Use Kilo Gateway with your existing OpenCode installation — no separate fork needed.
-
-> **Disclaimer**: This is an independent community plugin. It is not affiliated with, endorsed by, or sponsored by Kilo.ai or OpenCode. Kilo™ and OpenCode™ are trademarks of their respective owners.
-
-## Why this plugin?
-
-Kilo Gateway gives access to 342+ AI models, including 29 free tier options. The catch: to use it from the terminal, you had to install a separate Kilo CLI fork and maintain a parallel setup.
-
-This plugin adds Kilo Gateway as a provider directly to your existing OpenCode installation. One config line. No forks.
-
-## Support
-
-If this plugin helps you, consider supporting its maintenance:
-
-<a href="https://www.buymeacoffee.com/lucas.ghae">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
-</a>
+> Fork of [JungHoonGhae/opencode-kilo-auth](https://github.com/JungHoonGhae/opencode-kilo-auth), rewritten for OpenCode 2.x (`Plugin.define` API). This is an independent community plugin, not affiliated with Kilo.ai or OpenCode.
 
 ## Features
 
-- 🆓 **Free models** — 29 free tier models available
-- 🔌 **Easy install** — One config line, no CLI fork
-- 📦 **342+ models** — Full Kilo Gateway access
-- ⚡ **Drop-in** — Works with your existing OpenCode setup
-
-## Requirements
-
-| Requirement | Version |
-|-------------|---------|
-| OpenCode | Any recent version |
-| Node.js | >= 16 |
+- **V2 plugin API** — `Plugin.define({ id, setup })` from `@opencode/plugin`; no more `SchemaError(Expected object at ["default"])`
+- **Automatic model discovery** — fetches the live model list from `GET /api/openrouter/models` at startup (387+ models) and registers them with OpenCode; fail-open if the network is down
+- **Anonymous mode** — zero config: without any credentials the plugin uses Kilo's anonymous free-tier token, giving access to free models such as `kilo/kilo-auto/free`
+- **OAuth device flow** — connect via the TUI ("Connect provider" → Kilo Gateway); the token is persisted automatically to `accounts.json`
+- **API key auth** — paste a Kilo API key through the TUI form
+- **`KILO_API_KEY` env var** — set it and the plugin injects it as a single account, bypassing the accounts file
+- **Multi-account rotation** — rotates across every account in `accounts.json` with cooldowns on failures, inflight tracking, and retry steering, spreading load and surviving rate limits
+- **Long-lived tokens** — Kilo OAuth tokens last ~1 year; the refresh hook passes them through untouched
 
 ## Installation
 
-Add to your `~/.config/opencode/opencode.json`:
+Point your `opencode.jsonc` plugin array at this repo (local path or git URL):
 
-```json
+```jsonc
 {
-  "plugin": ["opencode-kilo-auth@latest"]
+  "plugin": ["file:///home/you/.clone/Github/opencode-plugins/opencode-kilo-auth"]
 }
 ```
 
-OpenCode will automatically install the plugin from npm on next startup.
+Or, once published to npm under your own package name, use that instead.
 
-## Documentation
+## Configuration
 
-| Resource | Link |
-|----------|------|
-| npm Package | [npmjs.com/package/opencode-kilo-auth](https://www.npmjs.com/package/opencode-kilo-auth) |
-| GitHub | [github.com/JungHoonGhae/opencode-kilo-auth](https://github.com/JungHoonGhae/opencode-kilo-auth) |
-| Kilo Gateway | [kilo.ai](https://kilo.ai) |
+### Accounts file
 
-## Contributing
+Accounts live in `accounts.json`, resolved in this order:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. `KILO_ACCOUNTS_PATH` env var
+2. `<plugin-dir>/../accounts.json` (sibling of the plugin directory)
+
+Accepted formats:
+
+```jsonc
+["token1", "token2"]
+
+// or
+[{ "id": "work", "token": "eyJ...", "label": "work@example.com" }]
+
+// or
+{ "accounts": ["token1", { "id": "personal", "token": "eyJ..." }] }
+```
+
+The file is re-read whenever its mtime changes — safe to edit while OpenCode runs. Accounts authenticated via the TUI are appended automatically.
+
+### Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `KILO_API_KEY` | Single-account shortcut; bypasses the accounts file |
+| `KILO_ACCOUNTS_PATH` | Custom path to `accounts.json` |
+| `KILO_POOL_LOG` | Path for a detailed rotation log file (`off`/`0` disables) |
+| `KILO_API_URL` | Override the Kilo API base (default `https://api.kilo.ai`) |
+| `KILO_EDITOR_NAME` | Value of the `X-KILO-EDITORNAME` header (default `OpenCode`) |
+
+## Usage
+
+With no configuration at all, the `kilo` provider appears with its free models and anonymous access works:
+
+```bash
+opencode run --model kilo/kilo-auto/free "Reply with exactly: OK"
+```
+
+For full model access and better quotas, connect an account: OpenCode TUI → "Connect provider" → Kilo Gateway → Device Authorization (or paste an API key). The token is stored in `accounts.json` and joins the rotation pool.
+
+> **Note**: model discovery runs once at plugin startup. If the network is unreachable at that moment the model list starts empty — restart OpenCode to re-fetch.
+
+## Module structure
+
+```
+src/
+├── index.ts      # Plugin entry: setup(), integration/provider registration, session hooks
+├── auth.ts       # OAuth device flow (initiate, poll, credential building)
+├── accounts.ts   # accounts.json loading, env-key handling, persistence
+├── pool.ts       # Rotation engine: selection, cooldowns, retry verdicts
+├── models.ts     # Live model discovery → OpenCode Model.Info mapping
+├── constants.ts  # API URLs, provider id, env var names
+└── types.ts      # Shared interfaces
+```
+
+## Build & develop
+
+```bash
+bun install        # or npm install
+bun run typecheck  # tsc --noEmit
+bun run build      # tsc
+```
+
+The plugin is loaded by OpenCode from `dist/index.js`; rebuild and OpenCode's watcher reloads it.
+
+## API endpoints used
+
+- Base: `https://api.kilo.ai` (override with `KILO_API_URL`)
+- Models: `GET /api/openrouter/models`
+- Chat: `POST /api/openrouter/chat/completions` (OpenAI-compatible)
+- Device auth: `POST /api/device-auth/codes`, poll `GET /api/device-auth/codes/{code}`
 
 ## License
 
-MIT - See [LICENSE](https://github.com/JungHoonGhae/opencode-kilo-auth/blob/main/LICENSE) for details.
+MIT — see [LICENSE](LICENSE).

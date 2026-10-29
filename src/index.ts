@@ -6,8 +6,9 @@ import type {
 } from "@opencode/plugin/promise/session"
 import type { Form } from "@opencode/schema/form"
 import { buildDeviceAuthAuthorization } from "./auth"
-import { ANONYMOUS_API_KEY, DEFAULT_EDITOR_NAME, ENV_EDITOR_NAME, HEADER_EDITORNAME, KILO_OPENROUTER_BASE, PROVIDER_ID } from "./constants"
+import { ANONYMOUS_API_KEY, DEFAULT_EDITOR_NAME, ENV_EDITOR_NAME, HEADER_EDITORNAME, KILO_OPENROUTER_BASE, PROVIDER_ID, TOKEN_EXPIRATION_MS } from "./constants"
 import { accounts, log, LOG_PREFIX } from "./accounts"
+import { fetchKiloModels } from "./models"
 import {
   inFlight,
   recordOutcome,
@@ -90,9 +91,17 @@ function onRequest(event: SessionHttpRequest): void {
   const now = Date.now()
 
   if (pool.length === 0) {
-    // No accounts configured — use anonymous token (free tier)
-    authorize(event.request, ANONYMOUS_API_KEY)
-    log(`request session=${shallow(event.sessionID)} kind=${event.kind} account=anonymous`)
+    // No explicit accounts configured. Keep whatever credential OpenCode already
+    // resolved for the provider (OAuth device login or API key), and only fall
+    // back to the anonymous free-tier token when none is present.
+    const existing = event.request.headers.get("authorization")
+    const token = existing?.replace(/^bearer\s+/i, "").trim()
+    if (!existing || token === ANONYMOUS_API_KEY || token === "") {
+      authorize(event.request, ANONYMOUS_API_KEY)
+      log(`request session=${shallow(event.sessionID)} kind=${event.kind} account=anonymous`)
+    } else {
+      log(`request session=${shallow(event.sessionID)} kind=${event.kind} account=opencode-credential`)
+    }
     return
   }
 
@@ -200,8 +209,10 @@ export default Plugin.define({
           return await buildDeviceAuthAuthorization("device")
         },
         async refresh(credential) {
-          // Kilo tokens are long-lived (1 year); no refresh endpoint needed
-          return credential
+          // Kilo tokens are long-lived (~1 year) with no refresh endpoint; on
+          // refresh, extend the recorded expiry so OpenCode keeps treating the
+          // still-valid token as valid instead of looping on a stale expires.
+          return { ...credential, expires: Date.now() + TOKEN_EXPIRATION_MS }
         },
       })
 
@@ -234,20 +245,30 @@ export default Plugin.define({
       providerID: PROVIDER_ID,
     })
 
-    // Register provider pointing at Kilo's OpenRouter-compatible endpoint
+    // Register provider pointing at Kilo's OpenRouter-compatible endpoint,
+    // then discover the model list from the API (fail-open: registers with
+    // empty list if the network is unavailable at startup).
+    const initialModels = await fetchKiloModels(
+      initial.length > 0 ? initial[0]?.token : undefined,
+    )
+    log(`models-discovered count=${initialModels.length}`)
+
     await ctx.provider.transform((editor) => {
       editor.add({
         info: {
           id: PROVIDER_ID as unknown as Parameters<typeof editor.add>[0]["info"]["id"],
           name: "Kilo Gateway",
-          package: "@ai-sdk/openai-compatible",
+          package: "@opencode/ai/providers/openai-compatible",
           activation: "auto",
+          // Link the provider to its integration so OpenCode resolves and injects
+          // the credential stored by the TUI login (device OAuth or API key).
+          integrationID: PROVIDER_ID as unknown as Parameters<typeof editor.add>[0]["info"]["integrationID"],
           settings: {
             baseURL: KILO_OPENROUTER_BASE,
             apiKey: ANONYMOUS_API_KEY,
           },
         },
-        models: [],
+        models: initialModels,
       })
     })
   },

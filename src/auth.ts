@@ -1,5 +1,6 @@
 import type { Credential } from "@opencode/plugin"
 import type { DeviceAuthInitiateResponse, DeviceAuthPollResponse } from "./types"
+import { appendAccount, log } from "./accounts"
 import { KILO_API_BASE, POLL_INTERVAL_MS, TOKEN_EXPIRATION_MS } from "./constants"
 
 async function initiateDeviceAuth(): Promise<DeviceAuthInitiateResponse> {
@@ -60,6 +61,19 @@ export async function buildDeviceAuthAuthorization(methodID: string): Promise<{
           if (!result.token) {
             reject(new Error("Authorization succeeded but no token was returned"))
             return
+          }
+          // Persist the account so the multi-account pool rotates across every
+          // Kilo account the user has signed in with.
+          const label = result.userEmail
+          try {
+            appendAccount({
+              id: label ? label.split("@")[0]! : `kilo-${Date.now()}`,
+              token: result.token,
+              ...(label ? { label } : {}),
+            })
+          } catch (error) {
+            // Persistence is best-effort; the credential still resolves via OpenCode
+            log(`append-failed ${error instanceof Error ? error.message : String(error)}`)
           }
           resolve({
             type: "oauth",
