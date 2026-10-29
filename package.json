@@ -1,19 +1,19 @@
 {
   "name": "opencode-kilo-auth",
-  "version": "1.1.4",
-  "description": "OpenCode plugin for Kilo Gateway authentication - access free AI models like z-ai/glm-5:free",
+  "version": "2.0.0",
+  "description": "OpenCode V2 plugin for Kilo Gateway - multi-account rotation, device OAuth, API key auth",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
   "license": "MIT",
-  "author": "JungHoonGhae",
+  "author": "SuperBypassUdinnn",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JungHoonGhae/opencode-kilo-auth.git"
+    "url": "git+https://github.com/SuperBypassUdinnn/opencode-kilo-auth.git"
   },
-  "homepage": "https://github.com/JungHoonGhae/opencode-kilo-auth#readme",
+  "homepage": "https://github.com/SuperBypassUdinnn/opencode-kilo-auth#readme",
   "bugs": {
-    "url": "https://github.com/JungHoonGhae/opencode-kilo-auth/issues"
+    "url": "https://github.com/SuperBypassUdinnn/opencode-kilo-auth/issues"
   },
   "keywords": [
     "opencode",
@@ -49,14 +49,12 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@opencode-ai/plugin": ">=0.0.0",
-    "@openrouter/ai-sdk-provider": "^1.5.0",
-    "ai": ">=4.0.0",
-    "open": "^10.0.0",
+    "@ai-sdk/openai-compatible": "^3.0.80",
+    "@opencode/plugin": "^2.2.1",
     "zod": "^3.0.0"
   },
   "peerDependencies": {
-    "@opencode-ai/plugin": ">=0.0.0"
+    "@opencode/plugin": ">=2.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.2.3",

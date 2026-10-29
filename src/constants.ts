@@ -1,6 +1,5 @@
 /**
  * Kilo Gateway Configuration Constants
- * Centralized configuration for all API endpoints, headers, and settings
  */
 
 /** Environment variable for custom Kilo API URL */
@@ -12,50 +11,24 @@ export const DEFAULT_KILO_API_URL = "https://api.kilo.ai"
 /** Base URL for Kilo API - can be overridden by KILO_API_URL env var */
 export const KILO_API_BASE = process.env[ENV_KILO_API_URL] || DEFAULT_KILO_API_URL
 
-/** Default base URL for OpenRouter-compatible endpoint */
+/** OpenRouter-compatible endpoint proxied by Kilo */
 export const KILO_OPENROUTER_BASE = `${KILO_API_BASE}/api/openrouter`
 
 /** Device auth polling interval in milliseconds */
 export const POLL_INTERVAL_MS = 3000
 
-/** Default model for authenticated users */
-export const DEFAULT_MODEL = "anthropic/claude-sonnet-4"
-
-/** Default model for anonymous/free usage */
-export const DEFAULT_FREE_MODEL = "minimax/minimax-m2.1:free"
+/** Provider ID registered with OpenCode */
+export const PROVIDER_ID = "kilo"
 
 /** Token expiration duration in milliseconds (1 year) */
 export const TOKEN_EXPIRATION_MS = 365 * 24 * 60 * 60 * 1000
 
-/** User-Agent header value for requests */
-export const USER_AGENT = "opencode-kilo-gateway"
-
-/** Content-Type header value for requests */
-export const CONTENT_TYPE = "application/json"
-
-/** Default provider name */
-export const DEFAULT_PROVIDER_NAME = "kilo"
-
-/** Default API key for anonymous requests */
+/** Default API key used when no credential is present (anonymous free tier) */
 export const ANONYMOUS_API_KEY = "anonymous"
 
-/** Fetch timeout for model requests in milliseconds (10 seconds) */
-export const MODELS_FETCH_TIMEOUT_MS = 10 * 1000
+/** Fetch timeout for model requests in milliseconds */
+export const MODELS_FETCH_TIMEOUT_MS = 10_000
 
-/**
- * Header constants for Kilo API requests
- */
-export const HEADER_ORGANIZATIONID = "X-KILO-ORGANIZATIONID"
-export const HEADER_TASKID = "X-KILO-TASKID"
-export const HEADER_PROJECTID = "X-KILO-PROJECTID"
-export const HEADER_TESTER = "X-KILO-TESTER"
 export const HEADER_EDITORNAME = "X-KILO-EDITORNAME"
-
-/** Default editor name value */
 export const DEFAULT_EDITOR_NAME = "OpenCode"
-
-/** Environment variable name for custom editor name */
 export const ENV_EDITOR_NAME = "KILO_EDITOR_NAME"
-
-/** Tester header value for suppressing warnings */
-export const TESTER_SUPPRESS_VALUE = "SUPPRESS"
